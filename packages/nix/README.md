@@ -74,7 +74,7 @@ The CLI derives the vendored toolkit root from that path, so it can find
 |---------|-------------|
 | `init [platforms...]` | Create `nix.yaml` and a starter `nix/flake.nix` |
 | `init --from-existing` | Import existing `.env` files and detect a vendored toolkit |
-| `setup [platforms...]` | Fetch the Flutter SDK and, when available, Android SDK components |
+| `setup [platforms...]` | Fetch the Flutter SDK and platform-specific SDK components |
 | `shell <platform>` | Enter the configured Nix dev shell |
 | `build <platform>` | Build inside the configured Nix shell |
 | `doctor` | Check Nix, flakes, `nix.yaml`, `flake.lock`, and vendored toolkit paths |
