@@ -1,0 +1,38 @@
+name: nix_workspace
+publish_to: 'none'
+
+environment:
+  sdk: ^3.5.0
+
+dev_dependencies:
+  melos: ^7.4.0
+
+workspace:
+  - apps/example
+  - packages/nix
+
+melos:
+  repository: https://github.com/ManyMath/nix
+  command:
+    bootstrap:
+      usePubspecOverrides: true
+  scripts:
+    test:
+      run: melos run test:dart --no-select && melos run test:flutter --no-select
+      description: Run all tests.
+    test:dart:
+      run: dart test
+      exec:
+        concurrency: 1
+      packageFilters:
+        dirExists: test
+        dependsOn: test
+      description: Run Dart tests.
+    test:flutter:
+      run: flutter test
+      exec:
+        concurrency: 1
+      packageFilters:
+        dirExists: test
+        dependsOn: flutter_test
+      description: Run Flutter tests.
