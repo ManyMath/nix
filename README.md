@@ -1,36 +1,38 @@
 # nix
 
-Reproducible Flutter builds on macOS, iOS, Android, Linux, and Web using
-[Nix](https://nixos.org/).
+Reproducible Flutter builds on macOS, iOS, Android, Linux, and Web with [Nix](https://nixos.org/).
 
-This repo is usable in three practical modes:
+This is a [melos](https://melos.invertase.dev/) monorepo containing:
 
-1. As the reference app in this checkout.
-2. As a Dart CLI package via `packages/nix` and the `nix_dart` executable.
-3. As an embedded toolkit via `Makefile.inc`, with or without the CLI.
+| Path | Description |
+|------|-------------|
+| `packages/nix` | Dart CLI package exposing the `nix_dart` executable |
+| `apps/example` | Reference Flutter app demonstrating the toolkit |
+
+## Quick Start
+
+```bash
+dart pub global activate melos
+melos bootstrap
+```
 
 ## Reference App
 
-This checkout is the smallest working example. The root `Makefile` wraps the
-same `Makefile.inc` that subtree users include in their host app, so the
-standalone example and embedded workflow stay aligned.
+The example app in `apps/example/` is the smallest working example. It wraps
+the same `Makefile.inc` that subtree users include in their host app.
 
 ```bash
+cd apps/example
 make setup-web
 make build-web
 make verify-web
 ```
-
-The checked-in expected hash for `build/web/main.dart.js` lives in
-`expected-hashes/web-main.dart.js.sha256`, and `tool/hash_web_release.sh`
-verifies it.
 
 The repo also includes a checked-in `nix.yaml`, so the example app works
 through `nix_dart` as well:
 
 ```bash
 dart run packages/nix/bin/nix_dart.dart doctor
-dart run packages/nix/bin/nix_dart.dart shell web
 ```
 
 ## Dart CLI
@@ -69,18 +71,26 @@ Package-specific docs live in `packages/nix/README.md`.
 
 ### Subtree + CLI
 
-This is the closest match to the `guix` workflow: keep the toolkit versioned
-in your repo, but let `nix_dart` manage `nix.yaml` and the `.env` bridge files.
+For new projects, prefer `nix_dart init` (see Dart CLI above) or
+`nix_dart eject` (see Standalone Script Toolkit below). The subtree approach
+is still supported for projects that want a vendored copy of the example
+toolkit checked into their repo.
 
 ```bash
-git subtree add --prefix=nix https://github.com/ManyMath/nix.git main --squash
-bash nix/bootstrap.sh
+git subtree add --prefix=nix \
+  --squash https://github.com/ManyMath/nix.git main
+bash nix/apps/example/bootstrap.sh
 
 dart pub global activate nix
 nix_dart init --from-existing
+```
 
-make nix-setup-web
-make nix-build-web
+The host project's `Makefile` should point `NIX_FLUTTER_DIR` at the subtree's
+example toolkit:
+
+```make
+NIX_FLUTTER_DIR ?= nix/apps/example
+include $(NIX_FLUTTER_DIR)/Makefile.inc
 ```
 
 `Makefile.inc` auto-delegates to `nix_dart` only when both `nix_dart` and
@@ -93,7 +103,7 @@ If you do not want a Dart CLI dependency in the host project, include
 `Makefile.inc` and use the vendored scripts directly through `make`.
 
 ```make
-NIX_FLUTTER_DIR ?= nix
+NIX_FLUTTER_DIR ?= nix/apps/example
 include $(NIX_FLUTTER_DIR)/Makefile.inc
 ```
 
