@@ -1,0 +1,47 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+**/build/
+/coverage/
+**/doc/api/
+*.iml
+.metadata
+.flutter-plugins
+.flutter-plugins-dependencies
+/pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Flutter SDK (fetched by scripts/fetch-flutter.sh)
+.flutter-sdk/
+
+# Nix
+.nix-profile
+result
+result-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CocoaPods (generated)
+example/ios/Pods/
+example/macos/Pods/
+example/ios/Podfile.lock
+example/macos/Podfile.lock
+
+# Misc
+*.class
+*.log
+*.pyc
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
