@@ -1,15 +1,16 @@
 # Example app workflow
 
-This is the smallest complete example in the repo.
+This is the smallest complete example in the repo, located at `apps/example/`.
 
 It is a plain Flutter app with pinned Nix files and a checked-in web artifact
 hash, so you can build it and see what a known-good result looks like.
 
 ## Build It Here
 
-Run these commands from this directory:
+Run these commands from `apps/example/`:
 
 ```bash
+cd apps/example
 make setup-web
 make build-web
 ./tool/hash_web_release.sh --check
@@ -35,6 +36,7 @@ This is the path shown above. It is the quickest way to prove the repo is in a
 known-good state before you adapt it to your own app.
 
 ```bash
+cd apps/example
 make setup-web
 make build-web
 ./tool/hash_web_release.sh --check
@@ -42,15 +44,18 @@ make build-web
 
 ### Copy the wrappers into an existing Flutter project
 
+All paths below are relative to the repo root.
+
 Copy these files and directories into the root of your project:
 
-- `Makefile`
-- `nix/`
-- `scripts/`
-- `tool/hash_web_release.sh`
-- `expected-hashes/web-main.dart.js.sha256`
-- `flutter_version.env`
-- `android_sdk_version.env`
+- `apps/example/Makefile`
+- `apps/example/Makefile.inc`
+- `apps/example/nix/`
+- `apps/example/scripts/`
+- `apps/example/tool/hash_web_release.sh`
+- `apps/example/expected-hashes/web-main.dart.js.sha256`
+- `apps/example/flutter_version.env`
+- `apps/example/android_sdk_version.env`
 
 Then:
 
@@ -69,7 +74,7 @@ subtree and run its commands from the subtree root:
 
 ```bash
 git subtree add --prefix third_party/nix-flutter REPO_URL main --squash
-cd third_party/nix-flutter
+cd third_party/nix-flutter/apps/example
 make setup-web
 make build-web
 ./tool/hash_web_release.sh --check
@@ -83,9 +88,9 @@ app at the repo root, use the copy-in approach instead.
 ### Fork the repo and replace the app
 
 If you are starting from this example, fork the repo and keep the example
-intact until `make verify-example-web` passes. After that, replace:
+intact until `cd apps/example && make verify-example-web` passes. After that, replace:
 
-- `lib/`
+- `apps/example/lib/`
 - assets and branding
 - Android/iOS/macOS bundle identifiers and app names
 
