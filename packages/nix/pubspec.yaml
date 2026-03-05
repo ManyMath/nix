@@ -3,6 +3,8 @@ description: Reproducible Dart and Flutter builds with Nix.
 version: 0.0.1
 repository: https://github.com/ManyMath/nix
 
+resolution: workspace
+
 environment:
   sdk: ^3.5.0
 

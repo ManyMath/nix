@@ -8,6 +8,7 @@
 .metadata
 .flutter-plugins
 .flutter-plugins-dependencies
+pubspec_overrides.yaml
 
 # IDE
 .idea/
@@ -22,9 +23,9 @@
 .android-sdk/
 
 # Android (generated)
-android/.gradle/
-android/local.properties
-android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+**/android/.gradle/
+**/android/local.properties
+**/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 
 # Nix
 .nix-profile
@@ -36,10 +37,13 @@ result-*
 Thumbs.db
 
 # CocoaPods (generated)
-ios/Pods/
-macos/Pods/
-ios/Podfile.lock
-macos/Podfile.lock
+**/ios/Pods/
+**/macos/Pods/
+**/ios/Podfile.lock
+**/macos/Podfile.lock
+
+# Melos
+.melos/
 
 # Misc
 *.class
