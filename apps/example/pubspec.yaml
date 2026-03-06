@@ -1,6 +1,7 @@
-name: nix
-description: Reproducible Flutter builds with Nix for macOS, iOS, Android, Linux, and Web.
+name: nix_example
+description: Reference Flutter app demonstrating reproducible builds with Nix.
 publish_to: 'none'
+resolution: workspace
 version: 0.1.0
 
 environment:
