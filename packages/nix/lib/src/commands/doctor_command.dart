@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:nix/src/config/nix_config.dart';
 import 'package:nix/src/flutter_sdk.dart';
 import 'package:nix/src/nix/nix_runner.dart';
+import 'package:nix/src/nix/wsl.dart';
 
 class DoctorCommand extends Command<int> {
   @override
@@ -27,12 +28,35 @@ class DoctorCommand extends Command<int> {
     var issues = 0;
     final nix = NixRunner(verbose: verbose);
 
+    // On Windows, check WSL availability first.
+    if (Platform.isWindows) {
+      final wslOk = await isWslAvailable();
+      if (wslOk) {
+        _pass('WSL2 available (Nix commands will run inside WSL)');
+      } else {
+        _fail('WSL2 not available');
+        _hint('Install WSL2: wsl --install');
+        _hint('Then install Nix inside WSL: https://nixos.org/download');
+        return 1;
+      }
+    }
+
     final nixInstalled = await nix.isInstalled();
     if (nixInstalled) {
-      _pass('Nix installed (${await nix.version()})');
+      final versionLabel = await nix.version();
+      if (Platform.isWindows) {
+        _pass('Nix installed in WSL ($versionLabel)');
+      } else {
+        _pass('Nix installed ($versionLabel)');
+      }
     } else {
-      _fail('Nix not found on PATH');
-      _hint('Install Nix: https://nixos.org/download');
+      if (Platform.isWindows) {
+        _fail('Nix not found in WSL');
+        _hint('Install Nix inside WSL: https://nixos.org/download');
+      } else {
+        _fail('Nix not found on PATH');
+        _hint('Install Nix: https://nixos.org/download');
+      }
       return 1;
     }
 

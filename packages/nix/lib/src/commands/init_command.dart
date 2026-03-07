@@ -100,7 +100,7 @@ class InitCommand extends Command<int> {
     }
 
     final platforms = argResults!.rest.isEmpty
-        ? <String>[Platform.isMacOS ? 'macos' : 'linux']
+        ? <String>[Platform.isMacOS ? 'macos' : 'linux', if (Platform.isWindows) 'web']
         : argResults!.rest;
     final flakePath = _requestedFlakePath() ?? 'nix';
     var wrote = 0;
@@ -331,7 +331,7 @@ class InitCommand extends Command<int> {
     }
 
     return platforms.isEmpty
-        ? <String>[Platform.isMacOS ? 'macos' : 'linux']
+        ? <String>[Platform.isMacOS ? 'macos' : 'linux', if (Platform.isWindows) 'web']
         : platforms;
   }
 
