@@ -54,7 +54,9 @@ File writeExecutable(Directory directory, String name, String content) {
   final file = File(p.join(directory.path, name))
     ..createSync(recursive: true)
     ..writeAsStringSync(content);
-  Process.runSync('chmod', ['+x', file.path]);
+  if (!Platform.isWindows) {
+    Process.runSync('chmod', ['+x', file.path]);
+  }
   return file;
 }
 

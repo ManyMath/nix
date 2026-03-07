@@ -37,7 +37,7 @@ Iterable<String> findFlakeCandidates(Directory root) sync* {
 
     final flakeFile = File(p.join(directory.path, 'nix', 'flake.nix'));
     if (flakeFile.existsSync()) {
-      yield p.relative(p.join(directory.path, 'nix'), from: root.path);
+      yield p.relative(p.join(directory.path, 'nix'), from: root.path).replaceAll(r'\', '/');
     }
 
     if (depth == 0) return;
