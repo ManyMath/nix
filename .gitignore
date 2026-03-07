@@ -19,6 +19,14 @@
 # Flutter SDK (fetched by scripts/fetch-flutter.sh)
 .flutter-sdk/
 
+# Android SDK (fetched by scripts/fetch-android-sdk.sh)
+.android-sdk/
+
+# Android (generated)
+android/.gradle/
+android/local.properties
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
 # Nix
 .nix-profile
 result

@@ -1,7 +1,11 @@
-# Unified entry point for Nix-based Flutter development (macOS/iOS).
+# Unified entry point for Nix-based Flutter development.
 # All targets wrap the scripts/ directory.
 
-.PHONY: setup shell shell-pinned build-macos build-macos-fast pin clean
+.PHONY: setup shell shell-pinned build-macos build-macos-fast \
+        setup-android shell-android shell-android-pinned \
+        build-android pin clean
+
+# --- macOS/iOS ---
 
 # Fetch Flutter SDK + pin Nix flake (first-time setup).
 setup:
@@ -24,7 +28,25 @@ build-macos:
 build-macos-fast:
 	./scripts/build-macos.sh --refresh
 
-# --- Utility targets ---
+# --- Android ---
+
+# Fetch Android SDK components (requires Java on PATH).
+setup-android: setup
+	./scripts/fetch-android-sdk.sh
+
+# Interactive Android dev shell.
+shell-android:
+	./scripts/shell-android.sh
+
+# Interactive Android dev shell (fully pinned via Nix).
+shell-android-pinned:
+	./scripts/shell-android.sh --pinned
+
+# CI-friendly Android APK build.
+build-android:
+	./scripts/build-android.sh
+
+# --- Utility ---
 
 # Re-pin nixpkgs to current versions.
 pin:
@@ -32,4 +54,4 @@ pin:
 
 # Remove fetched SDKs and build artifacts.
 clean:
-	rm -rf .flutter-sdk build ios/Pods macos/Pods
+	rm -rf .flutter-sdk .android-sdk build ios/Pods macos/Pods
