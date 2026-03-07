@@ -84,7 +84,7 @@ Future<ToolScaffoldResult> materializeToolkit({
       copiedFromAssets++;
     }
 
-    if (_isExecutable(relativePath)) {
+    if (!Platform.isWindows && _isExecutable(relativePath)) {
       Process.runSync('chmod', ['+x', destination.path]);
     }
   }

@@ -78,7 +78,9 @@ class NixConfig {
     if (path.isEmpty) return './.';
     if (p.isAbsolute(path) || _looksLikeExternalFlakeRef(path)) return path;
 
-    final normalized = p.normalize(path);
+    // Use posix normalize so flake refs always use forward slashes,
+    // even when running on Windows.
+    final normalized = p.posix.normalize(path.replaceAll(r'\', '/'));
     if (normalized == '.') return './.';
     if (normalized.startsWith('./') || normalized.startsWith('../')) {
       return normalized;
