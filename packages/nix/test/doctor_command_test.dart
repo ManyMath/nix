@@ -22,6 +22,10 @@ void main() {
 
     test('passes flakes and Flutter checks in a healthy CLI-only repo',
         () async {
+      if (Platform.isWindows) {
+        markTestSkipped('Nix CLI is not available on native Windows');
+        return;
+      }
       final nowSeconds = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
       _writeProjectFiles(project, lastModifiedSeconds: nowSeconds);
 
@@ -67,6 +71,10 @@ exit 1
     });
 
     test('does not fail when flake.lock has not been staged yet', () async {
+      if (Platform.isWindows) {
+        markTestSkipped('Nix CLI is not available on native Windows');
+        return;
+      }
       final nowSeconds = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
       _writeProjectFiles(project, lastModifiedSeconds: nowSeconds);
 

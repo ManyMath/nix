@@ -43,6 +43,10 @@ void main() {
 
     test('pins a fresh flake inside a clean git repo without git add',
         () async {
+      if (Platform.isWindows) {
+        markTestSkipped('Nix CLI is not available on native Windows');
+        return;
+      }
       await Process.run('git', ['init', '-q'], workingDirectory: project.path);
 
       final fakeBin = Directory(p.join(project.path, 'fake-bin'))
