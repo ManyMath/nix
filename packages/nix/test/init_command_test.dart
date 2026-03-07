@@ -83,7 +83,7 @@ exit 1
       expect(result.stdout, contains('Created nix/flake.lock'));
       expect(
         logFile.readAsStringSync(),
-        contains('--flake path:${p.join(project.path, 'nix')}'),
+        contains('--flake path:${p.join(project.resolveSymbolicLinksSync(), 'nix')}'),
       );
     });
   });
