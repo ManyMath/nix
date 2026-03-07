@@ -1,7 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:nix/src/nix/wsl.dart';
+
 /// Wraps invocations of the `nix` system binary.
+///
+/// On Windows, all commands are routed through `wsl` automatically.
+/// Paths are translated from Windows to WSL mount paths as needed.
 class NixRunner {
   final bool verbose;
   static const String _flakesProbeFlake = '''
@@ -13,10 +18,62 @@ class NixRunner {
 
   const NixRunner({this.verbose = false});
 
-  /// Check if `nix` is on PATH.
+  /// Run `nix` with [args], routing through WSL on Windows.
+  Future<ProcessResult> _runNix(List<String> args) async {
+    if (needsWsl) {
+      return Process.run('wsl', ['nix', ...args]);
+    }
+    return Process.run('nix', args);
+  }
+
+  /// Start `nix` with inherited stdio, routing through WSL on Windows.
+  Future<Process> _startNix(
+    List<String> args, {
+    Map<String, String>? environment,
+  }) async {
+    if (needsWsl) {
+      // Pass environment variables via env command inside WSL so they
+      // are visible to the nix process.
+      final envPrefix = <String>[];
+      if (environment != null) {
+        for (final entry in environment.entries) {
+          // Only forward nix_dart-specific vars, not the full Windows env.
+          if (_isProjectEnvVar(entry.key)) {
+            envPrefix.add('${entry.key}=${_nixPath(entry.value)}');
+          }
+        }
+      }
+
+      final wslArgs = <String>[];
+      if (envPrefix.isNotEmpty) {
+        wslArgs.addAll(['env', ...envPrefix]);
+      }
+      wslArgs.addAll(['nix', ...args]);
+
+      return Process.start(
+        'wsl',
+        wslArgs,
+        mode: ProcessStartMode.inheritStdio,
+      );
+    }
+    return Process.start(
+      'nix',
+      args,
+      mode: ProcessStartMode.inheritStdio,
+      environment: environment,
+    );
+  }
+
+  /// Convert a local path to a nix-compatible path (WSL translation on Windows).
+  String _nixPath(String path) => toWslPath(path);
+
+  static bool _isProjectEnvVar(String key) =>
+      key == 'PROJECT_ROOT' || key == 'FLUTTER_ROOT' || key == 'NIX_FLAKE_DIR';
+
+  /// Check if `nix` is available (directly or via WSL).
   Future<bool> isInstalled() async {
     try {
-      final result = await Process.run('nix', ['--version']);
+      final result = await _runNix(['--version']);
       return result.exitCode == 0;
     } on ProcessException {
       return false;
@@ -26,7 +83,7 @@ class NixRunner {
   /// Get the nix version string, or null if not installed.
   Future<String?> version() async {
     try {
-      final result = await Process.run('nix', ['--version']);
+      final result = await _runNix(['--version']);
       if (result.exitCode != 0) return null;
       return (result.stdout as String).trim().split('\n').first;
     } on ProcessException {
@@ -65,10 +122,11 @@ class NixRunner {
       probeDir = Directory.systemTemp.createTempSync('nix_flakes_probe_');
       File('${probeDir.path}/flake.nix').writeAsStringSync(_flakesProbeFlake);
 
-      final result = await Process.run('nix', [
+      final probePath = _nixPath(probeDir.absolute.path);
+      final result = await _runNix([
         'flake',
         'metadata',
-        'path:${probeDir.absolute.path}',
+        'path:$probePath',
       ]);
       if (result.exitCode == 0) {
         return FlakesStatus.enabled;
@@ -85,7 +143,7 @@ class NixRunner {
 
   Future<FlakesStatus> _checkConfiguredFlakesEnabled() async {
     try {
-      final result = await Process.run('nix', [
+      final result = await _runNix([
         'config',
         'show',
         'experimental-features',
@@ -168,9 +226,9 @@ class NixRunner {
 
   /// Update flake.lock by running `nix flake update` inside [flakeDir].
   Future<ProcessResult> pinFlake(String flakeDir) async {
-    final absoluteFlakeDir = Directory(flakeDir).absolute.path;
+    final absoluteFlakeDir = _nixPath(Directory(flakeDir).absolute.path);
     _log('nix flake update --flake path:$absoluteFlakeDir');
-    return Process.run('nix', [
+    return _runNix([
       'flake',
       'update',
       '--flake',
@@ -206,12 +264,7 @@ class NixRunner {
       env['FLUTTER_ROOT'] = sdkPath;
     }
 
-    final process = await Process.start(
-      'nix',
-      args,
-      mode: ProcessStartMode.inheritStdio,
-      environment: env,
-    );
+    final process = await _startNix(args, environment: env);
     return process.exitCode;
   }
 
@@ -228,25 +281,24 @@ class NixRunner {
     final args = ['develop', _shellRef(flakePath, shellName)];
     if (refresh) args.add('--refresh');
 
-    final sdkDir =
-        sdkPath ?? '${Directory.current.absolute.path}/.flutter-sdk/flutter';
+    final projectRoot = _nixPath(Directory.current.absolute.path);
+    final sdkDir = sdkPath != null
+        ? _nixPath(sdkPath)
+        : '$projectRoot/.flutter-sdk/flutter';
     final innerCmd = [
       'export PATH="$sdkDir/bin:\$PATH"',
       'export FLUTTER_ROOT="$sdkDir"',
-      'export PROJECT_ROOT="${Directory.current.absolute.path}"',
+      'export PROJECT_ROOT="$projectRoot"',
       command,
     ].join('\n');
 
     args.addAll(['--command', 'bash', '-c', innerCmd]);
     _log('nix ${args.join(' ')}');
 
-    final process = await Process.start(
-      'nix',
-      args,
-      mode: ProcessStartMode.inheritStdio,
-      environment: Map<String, String>.from(Platform.environment)
-        ..['PROJECT_ROOT'] = Directory.current.absolute.path,
-    );
+    final env = Map<String, String>.from(Platform.environment);
+    env['PROJECT_ROOT'] = Directory.current.absolute.path;
+
+    final process = await _startNix(args, environment: env);
     return process.exitCode;
   }
 
