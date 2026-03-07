@@ -94,9 +94,15 @@ class BuildCommand extends Command<int> {
     return exitCode;
   }
 
+  /// On Windows, prefer 'linux' or 'web' since builds run inside WSL/Nix.
   String? _defaultPlatform(NixConfig config) {
-    final preferred = Platform.isMacOS ? 'macos' : 'linux';
+    final preferred = Platform.isMacOS
+        ? 'macos'
+        : Platform.isWindows
+            ? 'linux'
+            : 'linux';
     if (config.platforms.containsKey(preferred)) return preferred;
+    if (Platform.isWindows && config.platforms.containsKey('web')) return 'web';
     return config.platformNames.isEmpty ? null : config.platformNames.first;
   }
 }

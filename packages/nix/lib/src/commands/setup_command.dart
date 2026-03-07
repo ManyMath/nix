@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:nix/src/config/nix_config.dart';
 import 'package:nix/src/flutter_sdk.dart';
+import 'package:nix/src/nix/wsl.dart';
 import 'package:nix/src/tool_scaffold.dart';
 
 String flutterDownloadUrl({
@@ -63,10 +64,12 @@ class SetupCommand extends Command<int> {
       return 0;
     }
 
-    final os = Platform.isMacOS ? 'macos' : 'linux';
-    final uname =
-        ((await Process.run('uname', ['-m'])).stdout as String).trim();
-    final arch = uname == 'arm64' || uname == 'aarch64' ? 'arm64' : 'x64';
+    // On Windows, fetch the Linux SDK (builds run in WSL/CI).
+    // On macOS/Linux, fetch for the host OS.
+    final os = Platform.isWindows
+        ? 'linux'
+        : (Platform.isMacOS ? 'macos' : 'linux');
+    final arch = await _detectArch(os);
     final url = flutterDownloadUrl(
       os: os,
       arch: arch,
@@ -106,13 +109,38 @@ class SetupCommand extends Command<int> {
       return 1;
     }
 
-    final checksumCommand = os == 'macos' ? 'shasum' : 'sha256sum';
+    final checksumCommand = Platform.isMacOS ? 'shasum' : 'sha256sum';
     final checksumArgs =
-        os == 'macos' ? ['-a', '256', archivePath] : [archivePath];
-    final checksumResult = await Process.run(checksumCommand, checksumArgs);
+        Platform.isMacOS ? ['-a', '256', archivePath] : [archivePath];
+
+    // On Windows, use certutil for checksum or fall back to WSL sha256sum.
+    ProcessResult checksumResult;
+    if (Platform.isWindows) {
+      checksumResult = await Process.run(
+          'certutil', ['-hashfile', archivePath, 'SHA256']);
+      // certutil output: line 0 is header, line 1 is the hash, line 2 is status
+      final lines = (checksumResult.stdout as String).trim().split('\n');
+      final computedHash = lines.length > 1 ? lines[1].trim() : '';
+      return _verifyAndExtract(
+          config, os, archivePath, expectedHash, checksumKey, computedHash);
+    }
+
+    checksumResult = await Process.run(checksumCommand, checksumArgs);
     final computedHash =
         (checksumResult.stdout as String).split(RegExp(r'\s+')).first;
 
+    return _verifyAndExtract(
+        config, os, archivePath, expectedHash, checksumKey, computedHash);
+  }
+
+  Future<int> _verifyAndExtract(
+    NixConfig config,
+    String os,
+    String archivePath,
+    String expectedHash,
+    String checksumKey,
+    String computedHash,
+  ) async {
     if (expectedHash.isNotEmpty) {
       print('  Verifying SHA-256...');
       if (computedHash != expectedHash) {
@@ -150,6 +178,17 @@ class SetupCommand extends Command<int> {
     return 0;
   }
 
+  /// Detect CPU architecture. On Windows, defaults to x64.
+  Future<String> _detectArch(String targetOs) async {
+    if (Platform.isWindows) {
+      // Windows builds target Linux x64 for WSL/CI.
+      return 'x64';
+    }
+    final uname =
+        ((await Process.run('uname', ['-m'])).stdout as String).trim();
+    return uname == 'arm64' || uname == 'aarch64' ? 'arm64' : 'x64';
+  }
+
   Future<int> _fetchAndroidSdk(NixConfig config) async {
     File script = File(config.scriptPath('fetch-android-sdk.sh'));
     if (!script.existsSync()) {
@@ -162,6 +201,30 @@ class SetupCommand extends Command<int> {
       'PROJECT_ROOT': Directory.current.absolute.path,
       'NIX_FLAKE_DIR': Directory(config.normalizedFlakePath).absolute.path,
     };
+
+    if (Platform.isWindows) {
+      // Run the Android SDK fetch script inside WSL with Nix.
+      final wslProjectRoot = toWslPath(Directory.current.absolute.path);
+      final wslFlakeDir =
+          toWslPath(Directory(config.normalizedFlakePath).absolute.path);
+      final wslScript = toWslPath(script.absolute.path);
+      final process = await Process.start(
+        'wsl',
+        [
+          'env',
+          'PROJECT_ROOT=$wslProjectRoot',
+          'NIX_FLAKE_DIR=$wslFlakeDir',
+          'nix',
+          'develop',
+          '${config.flakeRef}#android',
+          '--command',
+          'bash',
+          wslScript,
+        ],
+        mode: ProcessStartMode.inheritStdio,
+      );
+      return process.exitCode;
+    }
 
     if (Platform.isLinux) {
       final process = await Process.start(
