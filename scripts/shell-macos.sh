@@ -29,7 +29,7 @@ else
     echo "Using nixpkgs from nix/flake.lock"
 fi
 
-exec nix develop "${NIX_ARGS[@]}" "$FLAKE_DIR" --command bash --init-file <(cat <<INITEOF
+exec nix develop ${NIX_ARGS[@]+"${NIX_ARGS[@]}"} "$FLAKE_DIR" --command bash --init-file <(cat <<INITEOF
 export PATH="$SDK_DIR/bin:\$PATH"
 export FLUTTER_ROOT="$SDK_DIR"
 export PROJECT_ROOT="$PROJECT_ROOT"
