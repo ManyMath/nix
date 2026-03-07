@@ -16,13 +16,13 @@ shell:
 shell-pinned:
 	./scripts/shell-macos.sh --pinned
 
-# CI-friendly macOS build (fully pinned).
+# CI-friendly macOS build (fully pinned, default).
 build-macos:
-	./scripts/build-macos.sh --pinned
+	./scripts/build-macos.sh
 
 # macOS build with latest nixpkgs (faster, less reproducible).
 build-macos-fast:
-	./scripts/build-macos.sh
+	./scripts/build-macos.sh --refresh
 
 # --- Utility targets ---
 
@@ -32,4 +32,4 @@ pin:
 
 # Remove fetched SDKs and build artifacts.
 clean:
-	rm -rf .flutter-sdk build example/build example/ios/Pods example/macos/Pods
+	rm -rf .flutter-sdk build ios/Pods macos/Pods

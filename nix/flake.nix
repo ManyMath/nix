@@ -1,5 +1,5 @@
 {
-  description = "Reproducible Flutter dev environment for macOS/iOS via Nix.";
+  description = "Reproducible Flutter dev environment for macOS/iOS using Nix.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-24.11-darwin";
@@ -22,11 +22,11 @@
             ];
 
             shellHook = ''
-              # --- Neutralise Nix compiler/linker env so Xcode builds work ---
-              # mkShell brings in clang-wrapper, cctools-binutils-wrapper, and
-              # xcbuild shims that conflict with the native Xcode toolchain
-              # Flutter requires.  We only want Nix for ancillary tools
-              # (ruby, cocoapods, git, …), not for C/C++/Swift compilation.
+              # Unset Nix compiler/linker env so Xcode builds work.
+              # mkShell pulls in clang-wrapper, cctools-binutils-wrapper, and
+              # xcbuild shims that conflict with the Xcode toolchain Flutter
+              # needs. Nix should only provide tools like ruby, cocoapods,
+              # git, cmake, etc.
               unset SDKROOT NIX_CC NIX_BINTOOLS
               unset NIX_CFLAGS_COMPILE NIX_LDFLAGS
               unset NIX_ENFORCE_NO_NATIVE NIX_HARDENING_ENABLE
@@ -35,20 +35,22 @@
               unset NIX_BINTOOLS_WRAPPER_TARGET_HOST_aarch64_apple_darwin
               unset NIX_CC_WRAPPER_TARGET_HOST_aarch64_apple_darwin
               unset NIX_PKG_CONFIG_WRAPPER_TARGET_TARGET_aarch64_apple_darwin
+              unset NIX_BINTOOLS_WRAPPER_TARGET_HOST_x86_64_apple_darwin
+              unset NIX_CC_WRAPPER_TARGET_HOST_x86_64_apple_darwin
+              unset NIX_PKG_CONFIG_WRAPPER_TARGET_TARGET_x86_64_apple_darwin
               unset MACOSX_DEPLOYMENT_TARGET NIX_APPLE_SDK_VERSION
               unset CC CXX LD AR NM RANLIB OBJCOPY OBJDUMP AS STRIP SIZE
               unset CMAKE_INCLUDE_PATH CMAKE_LIBRARY_PATH
               unset NIXPKGS_CMAKE_PREFIX_PATH CONFIG_SHELL
               unset LD_DYLD_PATH HOST_PATH
 
-              # Strip Nix compiler/linker/xcbuild paths from PATH so Xcode
-              # finds its own toolchain.  Keep only Nix paths for the tools
-              # we actually want (ruby, cocoapods, git, curl, cmake, etc.).
+              # Remove Nix compiler/linker/xcbuild paths from PATH so Xcode
+              # finds its own toolchain.
               CLEAN_PATH=""
               IFS=':' read -ra PARTS <<< "$PATH"
               for p in "''${PARTS[@]}"; do
                 case "$p" in
-                  *clang-wrapper*|*clang-16*|*cctools-binutils*|*xcbuild*|*apple-sdk*|*compiler-rt*|*libcxx*) continue ;;
+                  *clang-wrapper*|*clang-[0-9]*|*cctools-binutils*|*xcbuild*|*apple-sdk*|*compiler-rt*|*libcxx*|*pkg-config-wrapper*) continue ;;
                   *) CLEAN_PATH="''${CLEAN_PATH:+$CLEAN_PATH:}$p" ;;
                 esac
               done

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build the Flutter macOS app inside a Nix shell.
 # This is a non-interactive build -- suitable for CI.
+# Defaults to --pinned for reproducibility.
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,7 +21,7 @@ BUILD_CMD='
 set -euo pipefail
 export PATH="$FLUTTER_NIX_SDK_DIR/bin:$PATH"
 export FLUTTER_ROOT="$FLUTTER_NIX_SDK_DIR"
-cd "$FLUTTER_NIX_PROJECT_ROOT/example"
+cd "$FLUTTER_NIX_PROJECT_ROOT"
 
 echo "--- flutter pub get ---"
 flutter pub get
@@ -32,10 +33,10 @@ echo "Build complete."
 ls -la build/macos/Build/Products/Release/ 2>/dev/null || true
 '
 
-if [ "${1:-}" = "--pinned" ]; then
-    echo "Building with pinned nixpkgs (from flake.lock)..."
-    nix develop "$FLAKE_DIR" --command bash -c "$BUILD_CMD"
-else
+if [ "${1:-}" = "--refresh" ]; then
     echo "Building with latest nixpkgs..."
     nix develop "$FLAKE_DIR" --refresh --command bash -c "$BUILD_CMD"
+else
+    echo "Building with pinned nixpkgs (from flake.lock)..."
+    nix develop "$FLAKE_DIR" --command bash -c "$BUILD_CMD"
 fi

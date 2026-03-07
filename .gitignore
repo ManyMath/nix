@@ -29,10 +29,10 @@ result-*
 Thumbs.db
 
 # CocoaPods (generated)
-example/ios/Pods/
-example/macos/Pods/
-example/ios/Podfile.lock
-example/macos/Podfile.lock
+ios/Pods/
+macos/Pods/
+ios/Podfile.lock
+macos/Podfile.lock
 
 # Misc
 *.class

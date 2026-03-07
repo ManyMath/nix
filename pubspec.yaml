@@ -1,16 +1,14 @@
 name: nix
-description: "Reproducible Flutter builds with Nix for macOS and iOS."
-version: 0.1.0
+description: Reproducible Flutter builds with Nix for macOS and iOS.
 publish_to: 'none'
+version: 0.1.0
 
 environment:
   sdk: ^3.10.0
-  flutter: '>=3.3.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  plugin_platform_interface: ^2.0.2
 
 dev_dependencies:
   flutter_test:
@@ -18,9 +16,4 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter:
-  plugin:
-    platforms:
-      ios:
-        pluginClass: NixPlugin
-      macos:
-        pluginClass: NixPlugin
+  uses-material-design: true

@@ -48,8 +48,8 @@ if [ -n "$HASH" ]; then
 else
     COMPUTED="$(shasum -a 256 "$ARCHIVE" | cut -d' ' -f1)"
     echo ""
-    echo "WARNING: No SHA-256 hash set for $(uname -m) in flutter_version.env."
-    echo "Archive downloaded but NOT verified. Add this hash and re-run:"
+    echo "ERROR: No SHA-256 hash set for $(uname -m) in flutter_version.env."
+    echo "Computed hash for downloaded archive:"
     echo ""
     if [ "$ARCH" = "_x64" ]; then
         echo "  FLUTTER_SHA256_X64=\"$COMPUTED\""
@@ -57,7 +57,14 @@ else
         echo "  FLUTTER_SHA256_ARM64=\"$COMPUTED\""
     fi
     echo ""
-    echo "Proceeding with unverified archive (first-time setup only)."
+    if [ "${1:-}" = "--allow-unverified" ]; then
+        echo "Proceeding without verification (--allow-unverified)."
+    else
+        echo "Add the hash to flutter_version.env and re-run."
+        echo "To skip verification (first-time only): $0 --allow-unverified"
+        rm -f "$ARCHIVE"
+        exit 1
+    fi
 fi
 
 echo "Extracting..."
