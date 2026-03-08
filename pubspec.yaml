@@ -1,5 +1,5 @@
 name: nix
-description: Reproducible Flutter builds with Nix for macOS and iOS.
+description: Reproducible Flutter builds with Nix for macOS, iOS, Android, Linux, and Web.
 publish_to: 'none'
 version: 0.1.0
 

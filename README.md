@@ -1,12 +1,12 @@
 # nix
 
-Reproducible Flutter builds on macOS, iOS, Android, and Linux using
+Reproducible Flutter builds on macOS, iOS, Android, Linux, and Web using
 [Nix](https://nixos.org/).
 
 Nix pins system dependencies (ruby, cocoapods, cmake, gtk3, etc.) so every
 developer gets identical versions. Xcode and the Android NDK handle
 native compilation on their respective platforms; Nix supplies the surrounding
-tooling and — on Linux — the full desktop toolkit.
+tooling and the full desktop toolkit on Linux.
 
 ## Reproducibility
 
@@ -41,7 +41,7 @@ Pinning happens at three layers:
    [Android Studio](https://developer.android.com/studio) or point
    `JAVA_HOME` at any compatible JDK.
 
-4. **Linux** requires no extra prerequisites — Nix provides the entire
+4. **Linux** requires no extra prerequisites: Nix provides the entire
    toolchain including the GTK3 development headers Flutter needs.
 
 ## Quick start
@@ -61,10 +61,21 @@ flutter run -d emulator-5554
 make setup-linux      # pin flake + fetch Flutter SDK
 make shell-linux      # enter dev shell (Nix provides GTK3, clang, cmake, …)
 flutter run -d linux
+
+# Web
+make setup-web        # pin flake + fetch Flutter SDK (auto-detects OS)
+make shell-web        # enter dev shell
+flutter run -d chrome
 ```
 
-See the Makefile for all targets (`build-macos`, `build-android`,
-`build-linux`, `shell-pinned`, etc.).
+| Platform  | Setup                | Dev shell            | CI build             |
+|-----------|----------------------|----------------------|----------------------|
+| macOS/iOS | `make setup`         | `make shell`         | `make build-macos`   |
+| Android   | `make setup-android` | `make shell-android` | `make build-android` |
+| Linux     | `make setup-linux`   | `make shell-linux`   | `make build-linux`   |
+| Web       | `make setup-web`     | `make shell-web`     | `make build-web`     |
+
+See the Makefile for all targets (`shell-pinned`, `build-web-fast`, etc.).
 
 ## Nix and Xcode compatibility
 
@@ -105,6 +116,21 @@ flutter run -d linux             # run the example app
 ```bash
 make build-linux                 # fully pinned, outputs to build/linux/
 ```
+
+## Web platform notes
+
+- Builds on both macOS and Linux hosts with no platform-specific tooling needed.
+- `dart2js` (bundled in the Flutter SDK) handles Dart→JS compilation; no separate download required.
+- On Linux, Nix provides Chromium automatically; on macOS, set `CHROME_EXECUTABLE` or install Google Chrome.
+- Full determinism: no code signing, no native linking. `build/web/main.dart.js` is byte-identical across clean rebuilds.
+- Verify reproducibility:
+  ```bash
+  make build-web && sha256sum build/web/main.dart.js > first.sha256
+  rm -rf build/web
+  make build-web && sha256sum build/web/main.dart.js > second.sha256
+  diff first.sha256 second.sha256   # no output = reproducible
+  ```
+- Serve locally: `python3 -m http.server 8080 -d build/web`
 
 ## Updating
 
