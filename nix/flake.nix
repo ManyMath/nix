@@ -1,5 +1,5 @@
 {
-  description = "Reproducible Flutter dev environment for macOS/iOS/Linux using Nix.";
+  description = "Reproducible Flutter dev environment for macOS/iOS/Linux/Web using Nix.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-24.11-darwin";
@@ -10,8 +10,14 @@
     let
       darwinSystems = [ "aarch64-darwin" "x86_64-darwin" ];
       linuxSystems  = [ "x86_64-linux" "aarch64-linux" ];
+      allSystems    = darwinSystems ++ linuxSystems;
       forAllDarwin  = nixpkgs.lib.genAttrs darwinSystems;
       forAllLinux   = nixpkgs-linux.lib.genAttrs linuxSystems;
+      forAllSystems = nixpkgs.lib.genAttrs allSystems;
+      pkgsFor = system:
+        if builtins.elem system linuxSystems
+        then import nixpkgs-linux { inherit system; }
+        else import nixpkgs { inherit system; };
     in {
       devShells =
         # macOS/iOS shell -- Nix provides tooling, Xcode owns the compiler.
@@ -103,6 +109,39 @@
                   export PATH="$PROJECT_ROOT/.flutter-sdk/flutter/bin:$PATH"
                   export FLUTTER_ROOT="$PROJECT_ROOT/.flutter-sdk/flutter"
                   echo "Flutter SDK: $FLUTTER_ROOT"
+                fi
+              '';
+            };
+          }
+        ))
+        //
+        # Web shell -- minimal, works on both macOS and Linux.
+        # dart2js handles Dart->JS; no native compilation required.
+        (forAllSystems (system:
+          let pkgs = pkgsFor system;
+          in {
+            web = pkgs.mkShell {
+              buildInputs = with pkgs; [
+                git curl unzip
+              ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+                chromium   # for flutter drive --browser-name=chrome
+              ];
+
+              shellHook = ''
+                echo "Nix web dev shell (${system})"
+                if [ -z "''${PROJECT_ROOT:-}" ]; then
+                  echo "Tip: use scripts/shell-web.sh or set PROJECT_ROOT"
+                elif [ -d "$PROJECT_ROOT/.flutter-sdk/flutter" ]; then
+                  export PATH="$PROJECT_ROOT/.flutter-sdk/flutter/bin:$PATH"
+                  export FLUTTER_ROOT="$PROJECT_ROOT/.flutter-sdk/flutter"
+                  echo "Flutter SDK: $FLUTTER_ROOT"
+                fi
+              '' + pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+                export CHROME_EXECUTABLE="${pkgs.chromium}/bin/chromium"
+              '' + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
+                # macOS: set CHROME_EXECUTABLE if Chrome is installed
+                if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+                  export CHROME_EXECUTABLE="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
                 fi
               '';
             };
