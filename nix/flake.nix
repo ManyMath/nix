@@ -87,7 +87,7 @@
                 clang cmake ninja pkg-config
                 # Flutter Linux desktop dependencies (GTK + system libs)
                 gtk3 glib pcre2
-                libblkid libuuid liblzma
+                util-linux xz
                 xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXinerama
                 xorg.libXi xorg.libXext xorg.libXfixes xorg.libXrender
                 mesa libGL

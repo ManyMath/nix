@@ -23,6 +23,14 @@ export PATH="$FLUTTER_NIX_SDK_DIR/bin:$PATH"
 export FLUTTER_ROOT="$FLUTTER_NIX_SDK_DIR"
 cd "$FLUTTER_NIX_PROJECT_ROOT"
 
+echo "--- Checking for Linux desktop support ---"
+if [ ! -d linux ]; then
+  echo "Creating Linux desktop project..."
+  flutter create --platforms=linux .
+else
+  echo "Linux desktop project already exists."
+fi
+
 echo "--- flutter pub get ---"
 flutter pub get
 
