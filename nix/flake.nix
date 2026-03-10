@@ -20,6 +20,12 @@
         else import nixpkgs { inherit system; };
     in {
       devShells =
+        # Merge per-system shell maps using recursiveUpdate so shells from
+        # different forAll* calls are combined rather than overwritten.
+        # Plain // is a shallow merge: forAllSystems (web) would clobber
+        # the entire x86_64-linux entry from forAllLinux (linux, android).
+        builtins.foldl' nixpkgs.lib.recursiveUpdate {} [
+
         # macOS/iOS shell -- Nix provides tooling, Xcode owns the compiler.
         (forAllDarwin (system:
           let pkgs = import nixpkgs { inherit system; };
@@ -129,7 +135,7 @@
             };
           }
         ))
-        //
+
         # Linux shells -- Nix owns the full toolchain (no Xcode needed).
         (forAllLinux (system:
           let pkgs = import nixpkgs-linux { inherit system; };
@@ -180,7 +186,7 @@
             };
           }
         ))
-        //
+
         # Web shell -- minimal, works on both macOS and Linux.
         # dart2js handles Dart->JS; no native compilation required.
         (forAllSystems (system:
@@ -212,6 +218,8 @@
               '';
             };
           }
-        ));
+        ))
+
+        ]; # end foldl' list
     };
 }
