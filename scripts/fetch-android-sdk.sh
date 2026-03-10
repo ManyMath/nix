@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Download and set up pinned Android SDK components (macOS).
-# Requires Java on PATH (from Nix shell or Android Studio JBR).
+# Download and set up pinned Android SDK components (macOS and Linux).
+# Requires Java on PATH (from the Nix android shell or a system JDK).
 # The SDK is stored in .android-sdk/ (git-ignored).
 set -euo pipefail
 
@@ -10,11 +10,26 @@ source "$PROJECT_ROOT/android_sdk_version.env"
 SDK_DIR="$PROJECT_ROOT/.android-sdk"
 CMDLINE_DIR="$SDK_DIR/cmdline-tools/latest"
 
+# Detect host OS.
+case "$(uname -s)" in
+    Darwin) HOST_OS="mac" ;;
+    Linux)  HOST_OS="linux" ;;
+    *)      echo "Unsupported OS: $(uname -s)"; exit 1 ;;
+esac
+
 # Verify Java is available.
 if ! command -v java &>/dev/null; then
     echo "ERROR: java not found on PATH."
-    echo "Install via Nix shell or set JAVA_HOME to Android Studio's JBR:"
-    echo "  export JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\""
+    if [ "$HOST_OS" = "linux" ]; then
+        echo "Enter the Nix android shell first (it provides JDK 17):"
+        echo "  make shell-android-pinned"
+        echo "Or install a system JDK:"
+        echo "  sudo apt install openjdk-17-jdk   # Debian/Ubuntu"
+        echo "  sudo dnf install java-17-openjdk  # Fedora/RHEL"
+    else
+        echo "Install via Nix shell or set JAVA_HOME to Android Studio's JBR:"
+        echo "  export JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\""
+    fi
     exit 1
 fi
 
@@ -22,10 +37,10 @@ fi
 if [ -x "$CMDLINE_DIR/bin/sdkmanager" ]; then
     echo "Android cmdline-tools already present at $CMDLINE_DIR"
 else
-    ARCHIVE="commandlinetools-mac-${ANDROID_CMDLINE_TOOLS_BUILD}_latest.zip"
+    ARCHIVE="commandlinetools-${HOST_OS}-${ANDROID_CMDLINE_TOOLS_BUILD}_latest.zip"
     URL="https://dl.google.com/android/repository/$ARCHIVE"
 
-    echo "Downloading Android cmdline-tools (build $ANDROID_CMDLINE_TOOLS_BUILD)..."
+    echo "Downloading Android cmdline-tools (build $ANDROID_CMDLINE_TOOLS_BUILD) for $HOST_OS..."
     mkdir -p "$SDK_DIR"
     cd "$SDK_DIR"
 
@@ -35,16 +50,32 @@ else
         exit 1
     fi
 
-    # Verify checksum if set.
-    if [ -n "${ANDROID_CMDLINE_TOOLS_SHA256:-}" ]; then
-        echo "Verifying checksum..."
-        echo "$ANDROID_CMDLINE_TOOLS_SHA256  $ARCHIVE" | shasum -a 256 -c -
+    # Select the correct hash and checksum tool for this OS.
+    if [ "$HOST_OS" = "linux" ]; then
+        EXPECTED_SHA="${ANDROID_CMDLINE_TOOLS_SHA256_LINUX:-}"
     else
-        COMPUTED="$(shasum -a 256 "$ARCHIVE" | cut -d' ' -f1)"
+        EXPECTED_SHA="${ANDROID_CMDLINE_TOOLS_SHA256:-}"
+    fi
+
+    if [ -n "$EXPECTED_SHA" ]; then
+        echo "Verifying checksum..."
+        if [ "$HOST_OS" = "linux" ]; then
+            echo "$EXPECTED_SHA  $ARCHIVE" | sha256sum -c -
+        else
+            echo "$EXPECTED_SHA  $ARCHIVE" | shasum -a 256 -c -
+        fi
+    else
+        if [ "$HOST_OS" = "linux" ]; then
+            COMPUTED="$(sha256sum "$ARCHIVE" | cut -d' ' -f1)"
+            ENV_VAR="ANDROID_CMDLINE_TOOLS_SHA256_LINUX"
+        else
+            COMPUTED="$(shasum -a 256 "$ARCHIVE" | cut -d' ' -f1)"
+            ENV_VAR="ANDROID_CMDLINE_TOOLS_SHA256"
+        fi
         echo ""
         echo "WARNING: No SHA-256 hash set in android_sdk_version.env."
         echo "Add this to verify future downloads:"
-        echo "  ANDROID_CMDLINE_TOOLS_SHA256=\"$COMPUTED\""
+        echo "  ${ENV_VAR}=\"$COMPUTED\""
         echo ""
     fi
 

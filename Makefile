@@ -4,6 +4,7 @@
 .PHONY: setup shell shell-pinned build-macos build-macos-fast \
         setup-android shell-android shell-android-pinned \
         build-android \
+        setup-android-linux \
         setup-linux shell-linux shell-linux-pinned build-linux build-linux-fast \
         setup-web shell-web shell-web-pinned build-web build-web-fast \
         pin clean
@@ -33,19 +34,23 @@ build-macos-fast:
 
 # --- Android ---
 
-# Fetch Android SDK components (requires Java on PATH).
+# Fetch Flutter (macOS) + Android SDK components (requires Java on PATH).
 setup-android: setup
 	./scripts/fetch-android-sdk.sh
+
+# Fetch Flutter (Linux) + Android SDK via Nix android shell (provides Java).
+setup-android-linux: setup-linux
+	nix develop ./nix#android --command ./scripts/fetch-android-sdk.sh
 
 # Interactive Android dev shell.
 shell-android:
 	./scripts/shell-android.sh
 
-# Interactive Android dev shell (fully pinned via Nix).
+# Interactive Android dev shell (fully pinned via Nix -- provides Java on any OS).
 shell-android-pinned:
 	./scripts/shell-android.sh --pinned
 
-# CI-friendly Android APK build.
+# CI-friendly Android APK build (Linux: uses Nix android shell; macOS: uses system Java).
 build-android:
 	./scripts/build-android.sh
 
