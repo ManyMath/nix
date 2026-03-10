@@ -1,76 +1,112 @@
 {
-  description = "Reproducible Flutter dev environment for macOS/iOS using Nix.";
+  description = "Reproducible Flutter dev environment for macOS/iOS/Linux using Nix.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-24.11-darwin";
+    nixpkgs-linux.url = "github:NixOS/nixpkgs/nixos-24.11";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, nixpkgs-linux }:
     let
-      systems = [ "aarch64-darwin" "x86_64-darwin" ];
-      forAllSystems = nixpkgs.lib.genAttrs systems;
+      darwinSystems = [ "aarch64-darwin" "x86_64-darwin" ];
+      linuxSystems  = [ "x86_64-linux" "aarch64-linux" ];
+      forAllDarwin  = nixpkgs.lib.genAttrs darwinSystems;
+      forAllLinux   = nixpkgs-linux.lib.genAttrs linuxSystems;
     in {
-      devShells = forAllSystems (system:
-        let
-          pkgs = import nixpkgs { inherit system; };
-        in {
-          default = pkgs.mkShell {
-            buildInputs = with pkgs; [
-              ruby cocoapods
-              git curl unzip
-              cmake ninja pkg-config
-            ];
+      devShells =
+        # macOS/iOS shell -- Nix provides tooling, Xcode owns the compiler.
+        (forAllDarwin (system:
+          let pkgs = import nixpkgs { inherit system; };
+          in {
+            default = pkgs.mkShell {
+              buildInputs = with pkgs; [
+                ruby cocoapods
+                git curl unzip
+                cmake ninja pkg-config
+              ];
 
-            shellHook = ''
-              # Unset Nix compiler/linker env so Xcode builds work.
-              # mkShell pulls in clang-wrapper, cctools-binutils-wrapper, and
-              # xcbuild shims that conflict with the Xcode toolchain Flutter
-              # needs. Nix should only provide tools like ruby, cocoapods,
-              # git, cmake, etc.
-              unset SDKROOT NIX_CC NIX_BINTOOLS
-              unset NIX_CFLAGS_COMPILE NIX_LDFLAGS
-              unset NIX_ENFORCE_NO_NATIVE NIX_HARDENING_ENABLE
-              unset NIX_DONT_SET_RPATH NIX_DONT_SET_RPATH_FOR_BUILD
-              unset NIX_NO_SELF_RPATH NIX_IGNORE_LD_THROUGH_GCC
-              unset NIX_BINTOOLS_WRAPPER_TARGET_HOST_aarch64_apple_darwin
-              unset NIX_CC_WRAPPER_TARGET_HOST_aarch64_apple_darwin
-              unset NIX_PKG_CONFIG_WRAPPER_TARGET_TARGET_aarch64_apple_darwin
-              unset NIX_BINTOOLS_WRAPPER_TARGET_HOST_x86_64_apple_darwin
-              unset NIX_CC_WRAPPER_TARGET_HOST_x86_64_apple_darwin
-              unset NIX_PKG_CONFIG_WRAPPER_TARGET_TARGET_x86_64_apple_darwin
-              unset MACOSX_DEPLOYMENT_TARGET NIX_APPLE_SDK_VERSION
-              unset CC CXX LD AR NM RANLIB OBJCOPY OBJDUMP AS STRIP SIZE
-              unset CMAKE_INCLUDE_PATH CMAKE_LIBRARY_PATH
-              unset NIXPKGS_CMAKE_PREFIX_PATH CONFIG_SHELL
-              unset LD_DYLD_PATH HOST_PATH
+              shellHook = ''
+                # Unset Nix compiler/linker env so Xcode builds work.
+                # mkShell pulls in clang-wrapper, cctools-binutils-wrapper, and
+                # xcbuild shims that conflict with the Xcode toolchain Flutter
+                # needs. Nix should only provide tools like ruby, cocoapods,
+                # git, cmake, etc.
+                unset SDKROOT NIX_CC NIX_BINTOOLS
+                unset NIX_CFLAGS_COMPILE NIX_LDFLAGS
+                unset NIX_ENFORCE_NO_NATIVE NIX_HARDENING_ENABLE
+                unset NIX_DONT_SET_RPATH NIX_DONT_SET_RPATH_FOR_BUILD
+                unset NIX_NO_SELF_RPATH NIX_IGNORE_LD_THROUGH_GCC
+                unset NIX_BINTOOLS_WRAPPER_TARGET_HOST_aarch64_apple_darwin
+                unset NIX_CC_WRAPPER_TARGET_HOST_aarch64_apple_darwin
+                unset NIX_PKG_CONFIG_WRAPPER_TARGET_TARGET_aarch64_apple_darwin
+                unset NIX_BINTOOLS_WRAPPER_TARGET_HOST_x86_64_apple_darwin
+                unset NIX_CC_WRAPPER_TARGET_HOST_x86_64_apple_darwin
+                unset NIX_PKG_CONFIG_WRAPPER_TARGET_TARGET_x86_64_apple_darwin
+                unset MACOSX_DEPLOYMENT_TARGET NIX_APPLE_SDK_VERSION
+                unset CC CXX LD AR NM RANLIB OBJCOPY OBJDUMP AS STRIP SIZE
+                unset CMAKE_INCLUDE_PATH CMAKE_LIBRARY_PATH
+                unset NIXPKGS_CMAKE_PREFIX_PATH CONFIG_SHELL
+                unset LD_DYLD_PATH HOST_PATH
 
-              # Remove Nix compiler/linker/xcbuild paths from PATH so Xcode
-              # finds its own toolchain.
-              CLEAN_PATH=""
-              IFS=':' read -ra PARTS <<< "$PATH"
-              for p in "''${PARTS[@]}"; do
-                case "$p" in
-                  *clang-wrapper*|*clang-[0-9]*|*cctools-binutils*|*xcbuild*|*apple-sdk*|*compiler-rt*|*libcxx*|*pkg-config-wrapper*) continue ;;
-                  *) CLEAN_PATH="''${CLEAN_PATH:+$CLEAN_PATH:}$p" ;;
-                esac
-              done
-              export PATH="/usr/bin:$CLEAN_PATH"
+                # Remove Nix compiler/linker/xcbuild paths from PATH so Xcode
+                # finds its own toolchain.
+                CLEAN_PATH=""
+                IFS=':' read -ra PARTS <<< "$PATH"
+                for p in "''${PARTS[@]}"; do
+                  case "$p" in
+                    *clang-wrapper*|*clang-[0-9]*|*cctools-binutils*|*xcbuild*|*apple-sdk*|*compiler-rt*|*libcxx*|*pkg-config-wrapper*) continue ;;
+                    *) CLEAN_PATH="''${CLEAN_PATH:+$CLEAN_PATH:}$p" ;;
+                  esac
+                done
+                export PATH="/usr/bin:$CLEAN_PATH"
 
-              if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
-                export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-              fi
+                if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
+                  export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+                fi
 
-              echo "Nix dev shell (${system})"
-              if [ -z "''${PROJECT_ROOT:-}" ]; then
-                echo "Tip: use scripts/shell-macos.sh or set PROJECT_ROOT"
-              elif [ -d "$PROJECT_ROOT/.flutter-sdk/flutter" ]; then
-                export PATH="$PROJECT_ROOT/.flutter-sdk/flutter/bin:$PATH"
-                export FLUTTER_ROOT="$PROJECT_ROOT/.flutter-sdk/flutter"
-                echo "Flutter SDK: $FLUTTER_ROOT"
-              fi
-            '';
-          };
-        }
-      );
+                echo "Nix dev shell (${system})"
+                if [ -z "''${PROJECT_ROOT:-}" ]; then
+                  echo "Tip: use scripts/shell-macos.sh or set PROJECT_ROOT"
+                elif [ -d "$PROJECT_ROOT/.flutter-sdk/flutter" ]; then
+                  export PATH="$PROJECT_ROOT/.flutter-sdk/flutter/bin:$PATH"
+                  export FLUTTER_ROOT="$PROJECT_ROOT/.flutter-sdk/flutter"
+                  echo "Flutter SDK: $FLUTTER_ROOT"
+                fi
+              '';
+            };
+          }
+        ))
+        //
+        # Linux desktop shell -- Nix owns the full toolchain (no Xcode needed).
+        (forAllLinux (system:
+          let pkgs = import nixpkgs-linux { inherit system; };
+          in {
+            linux = pkgs.mkShell {
+              buildInputs = with pkgs; [
+                # Build toolchain
+                clang cmake ninja pkg-config
+                # Flutter Linux desktop dependencies (GTK + system libs)
+                gtk3 glib pcre2
+                libblkid libuuid liblzma
+                xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXinerama
+                xorg.libXi xorg.libXext xorg.libXfixes xorg.libXrender
+                mesa libGL
+                # Common dev tools
+                git curl unzip
+              ];
+
+              shellHook = ''
+                echo "Nix Linux dev shell (${system})"
+                if [ -z "''${PROJECT_ROOT:-}" ]; then
+                  echo "Tip: use scripts/shell-linux.sh or set PROJECT_ROOT"
+                elif [ -d "$PROJECT_ROOT/.flutter-sdk/flutter" ]; then
+                  export PATH="$PROJECT_ROOT/.flutter-sdk/flutter/bin:$PATH"
+                  export FLUTTER_ROOT="$PROJECT_ROOT/.flutter-sdk/flutter"
+                  echo "Flutter SDK: $FLUTTER_ROOT"
+                fi
+              '';
+            };
+          }
+        ));
     };
 }

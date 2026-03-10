@@ -3,7 +3,9 @@
 
 .PHONY: setup shell shell-pinned build-macos build-macos-fast \
         setup-android shell-android shell-android-pinned \
-        build-android pin clean
+        build-android \
+        setup-linux shell-linux shell-linux-pinned build-linux build-linux-fast \
+        pin clean
 
 # --- macOS/iOS ---
 
@@ -45,6 +47,29 @@ shell-android-pinned:
 # CI-friendly Android APK build.
 build-android:
 	./scripts/build-android.sh
+
+# --- Linux desktop ---
+
+# Fetch Flutter SDK for Linux + pin Nix flake (first-time setup).
+setup-linux:
+	./nix/pin.sh
+	./scripts/fetch-flutter-linux.sh
+
+# Interactive Linux dev shell (uses flake.lock as-is).
+shell-linux:
+	./scripts/shell-linux.sh
+
+# Interactive Linux dev shell (fully pinned -- reproducible).
+shell-linux-pinned:
+	./scripts/shell-linux.sh --pinned
+
+# CI-friendly Linux build (fully pinned, default).
+build-linux:
+	./scripts/build-linux.sh
+
+# Linux build with latest nixpkgs (faster, less reproducible).
+build-linux-fast:
+	./scripts/build-linux.sh --refresh
 
 # --- Utility ---
 
