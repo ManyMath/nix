@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
 import 'package:nix/src/config/nix_config.dart';
+import 'package:nix/src/flutter_sdk.dart';
 import 'package:nix/src/nix/nix_runner.dart';
 
 class DoctorCommand extends Command<int> {
@@ -17,8 +18,7 @@ class DoctorCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final verbose =
-        argResults!['verbose'] as bool ||
+    final verbose = argResults!['verbose'] as bool ||
         (globalResults?['verbose'] as bool? ?? false);
 
     print('Nix Doctor');
@@ -76,15 +76,16 @@ class DoctorCommand extends Command<int> {
     final lockFile = File(p.join(config.normalizedFlakePath, 'flake.lock'));
     if (lockFile.existsSync()) {
       final tracked = await nix.isTrackedByGit(lockFile.path);
-      _pass('flake.lock present${tracked ? '' : ' (not tracked by git)'}');
-      if (!tracked) {
-        issues++;
+      if (tracked) {
+        _pass('flake.lock present');
+      } else {
+        _warn('flake.lock present but not tracked by git');
+        _hint('Run: git add ${lockFile.path}');
       }
       final ageDays = nix.flakeLockAgeDays(lockFile.path);
       if (ageDays > 90) {
         _warn('flake.lock is $ageDays days old');
         _hint('Run: nix_dart pin');
-        issues++;
       } else if (ageDays >= 0 && verbose) {
         _pass('flake.lock is $ageDays days old');
       }
@@ -100,10 +101,7 @@ class DoctorCommand extends Command<int> {
       _hint('Run: nix_dart setup');
       issues++;
     } else {
-      final versionFile = File('.flutter-sdk/flutter/version');
-      final version = versionFile.existsSync()
-          ? versionFile.readAsStringSync().trim()
-          : null;
+      final version = await detectInstalledFlutterVersion();
       if (version == config.flutter.version) {
         _pass('Flutter SDK fetched ($version)');
       } else {
@@ -121,7 +119,7 @@ class DoctorCommand extends Command<int> {
     } else {
       _warn('Vendored toolkit scripts not found at ${scriptsDir.path}');
       _hint(
-        'This is fine for CLI-only use, but setup android needs the vendored script.',
+        'CLI-only setup uses bundled assets. Run nix_dart eject if you want scripts checked in.',
       );
     }
 

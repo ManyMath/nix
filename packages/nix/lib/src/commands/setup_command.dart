@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:nix/src/config/nix_config.dart';
+import 'package:nix/src/flutter_sdk.dart';
+import 'package:nix/src/tool_scaffold.dart';
 
 String flutterDownloadUrl({
   required String os,
@@ -25,9 +27,8 @@ class SetupCommand extends Command<int> {
   @override
   Future<int> run() async {
     final config = NixConfig.load();
-    final targetPlatforms = argResults!.rest.isEmpty
-        ? config.platformNames
-        : argResults!.rest;
+    final targetPlatforms =
+        argResults!.rest.isEmpty ? config.platformNames : argResults!.rest;
 
     print('Setting up Flutter SDK ${config.flutter.version}...');
     final flutterExitCode = await _fetchFlutter(config);
@@ -56,21 +57,15 @@ class SetupCommand extends Command<int> {
   }
 
   Future<int> _fetchFlutter(NixConfig config) async {
-    final sdkDir = Directory('.flutter-sdk/flutter');
-    if (sdkDir.existsSync()) {
-      final versionFile = File('.flutter-sdk/flutter/version');
-      if (versionFile.existsSync()) {
-        final currentVersion = versionFile.readAsStringSync().trim();
-        if (currentVersion == config.flutter.version) {
-          print('  Flutter ${config.flutter.version} already present.');
-          return 0;
-        }
-      }
+    final installedVersion = await detectInstalledFlutterVersion();
+    if (installedVersion == config.flutter.version) {
+      print('  Flutter ${config.flutter.version} already present.');
+      return 0;
     }
 
     final os = Platform.isMacOS ? 'macos' : 'linux';
-    final uname = ((await Process.run('uname', ['-m'])).stdout as String)
-        .trim();
+    final uname =
+        ((await Process.run('uname', ['-m'])).stdout as String).trim();
     final arch = uname == 'arm64' || uname == 'aarch64' ? 'arm64' : 'x64';
     final url = flutterDownloadUrl(
       os: os,
@@ -83,11 +78,11 @@ class SetupCommand extends Command<int> {
         : '.flutter-sdk/flutter.tar.xz';
     final expectedHash = os == 'macos'
         ? (arch == 'arm64'
-              ? config.flutter.checksumMacosArm64
-              : config.flutter.checksumMacosX64)
+            ? config.flutter.checksumMacosArm64
+            : config.flutter.checksumMacosX64)
         : (arch == 'arm64'
-              ? config.flutter.checksumLinuxArm64
-              : config.flutter.checksumLinuxX64);
+            ? config.flutter.checksumLinuxArm64
+            : config.flutter.checksumLinuxX64);
     final checksumKey = os == 'macos'
         ? (arch == 'arm64' ? 'macos_arm64' : 'macos_x64')
         : (arch == 'arm64' ? 'linux_arm64' : 'linux_x64');
@@ -97,25 +92,26 @@ class SetupCommand extends Command<int> {
 
     Directory('.flutter-sdk').createSync(recursive: true);
 
-    final downloadResult = await Process.start('curl', [
-      '-fSL',
-      '-o',
-      archivePath,
-      url,
-    ], mode: ProcessStartMode.inheritStdio);
+    final downloadResult = await Process.start(
+        'curl',
+        [
+          '-fSL',
+          '-o',
+          archivePath,
+          url,
+        ],
+        mode: ProcessStartMode.inheritStdio);
     if (await downloadResult.exitCode != 0) {
       stderr.writeln('  Failed to download Flutter SDK.');
       return 1;
     }
 
     final checksumCommand = os == 'macos' ? 'shasum' : 'sha256sum';
-    final checksumArgs = os == 'macos'
-        ? ['-a', '256', archivePath]
-        : [archivePath];
+    final checksumArgs =
+        os == 'macos' ? ['-a', '256', archivePath] : [archivePath];
     final checksumResult = await Process.run(checksumCommand, checksumArgs);
-    final computedHash = (checksumResult.stdout as String)
-        .split(RegExp(r'\s+'))
-        .first;
+    final computedHash =
+        (checksumResult.stdout as String).split(RegExp(r'\s+')).first;
 
     if (expectedHash.isNotEmpty) {
       print('  Verifying SHA-256...');
@@ -155,11 +151,10 @@ class SetupCommand extends Command<int> {
   }
 
   Future<int> _fetchAndroidSdk(NixConfig config) async {
-    final script = File(config.scriptPath('fetch-android-sdk.sh'));
+    File script = File(config.scriptPath('fetch-android-sdk.sh'));
     if (!script.existsSync()) {
-      print('  No vendored fetch-android-sdk.sh found at ${script.path}.');
-      print('  Add this repo as a subtree, or fetch the Android SDK manually.');
-      return 0;
+      script = await resolveToolAssetFile('scripts/fetch-android-sdk.sh');
+      print('  Using bundled Android SDK setup script.');
     }
 
     final env = <String, String>{
