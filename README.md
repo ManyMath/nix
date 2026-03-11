@@ -53,6 +53,16 @@ already have `flutter_version.env`, `android_sdk_version.env`, or a vendored
 copy of this repo. After editing `nix.yaml`, run `nix_dart sync` to refresh
 the `.env` files that the shell scripts consume.
 
+If you want to start CLI-first and later hand a self-contained toolkit to CI or
+to another repo, `nix_dart eject` materializes `bootstrap.sh`,
+`Makefile.inc`, `nix/`, `scripts/`, and the `.env` files into the output
+directory:
+
+```bash
+nix_dart eject --output-dir tooling/nix
+bash tooling/nix/bootstrap.sh
+```
+
 Package-specific docs live in `packages/nix/README.md`.
 
 ## Embedded Toolkit
@@ -94,6 +104,21 @@ make nix-bootstrap
 make nix-setup-linux
 make nix-shell-linux
 make nix-build-linux
+```
+
+### Standalone Script Toolkit
+
+`nix_dart eject` is the bridge between the CLI workflow and the vendored
+script workflow. It produces the same files that a subtree checkout would
+contain, but without requiring git subtree history in the host project.
+
+```bash
+nix_dart init web
+nix_dart setup web
+nix_dart eject --output-dir .
+
+./scripts/fetch-flutter-web.sh
+PROJECT_ROOT="$PWD" ./scripts/build-web.sh
 ```
 
 ## Reproducibility Inputs

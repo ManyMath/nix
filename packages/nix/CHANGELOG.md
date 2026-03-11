@@ -9,5 +9,8 @@
   when they exist.
 - `shell`, `build`, and `pin` wrap the configured Nix flake directly.
 - `sync` writes the `.env` files used by the repo-shipped shell scripts.
-- `doctor` and `eject` validate the config, lockfile, and embedded toolkit
+- `doctor` validates config and lockfile health
+- `eject` now materializes a standalone toolkit, with bundled-asset fallback
   layout.
+- `bootstrap.sh` now discovers the nearest host `pubspec.yaml`, so nested
+  vendored toolkits and standalone roots bootstrap correctly.

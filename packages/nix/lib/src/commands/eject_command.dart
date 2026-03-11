@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
-import 'package:path/path.dart' as p;
 import 'package:nix/src/commands/sync_command.dart';
 import 'package:nix/src/config/nix_config.dart';
+import 'package:nix/src/tool_scaffold.dart';
 
 class EjectCommand extends Command<int> {
   @override
@@ -10,92 +10,62 @@ class EjectCommand extends Command<int> {
 
   @override
   final String description =
-      'Write .env files from nix.yaml and validate the vendored toolkit files.';
+      'Generate a standalone shell-script toolkit from the current config.';
 
   EjectCommand() {
-    argParser.addFlag(
+    argParser
+      ..addOption(
+        'output-dir',
+        abbr: 'd',
+        defaultsTo: '.',
+        help: 'Directory that should receive the standalone toolkit',
+      )
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: 'Overwrite existing toolkit files in the output directory',
+      )
+      ..addFlag(
       'write-env',
       defaultsTo: true,
       help:
-          'Write flutter_version.env and android_sdk_version.env before validation',
+          'Write flutter_version.env and android_sdk_version.env into the output directory',
     );
   }
 
   @override
   Future<int> run() async {
     final config = NixConfig.load();
+    final outputDir = argResults!['output-dir'] as String;
+    final force = argResults!['force'] as bool;
+    final outputRoot = Directory(outputDir);
+
+    if (!outputRoot.existsSync()) {
+      outputRoot.createSync(recursive: true);
+    }
+
     if (argResults!['write-env'] as bool) {
-      writeEnvFiles(config);
+      writeEnvFiles(config, dir: outputRoot.path);
     }
 
-    final toolkitRoot = config.toolkitRoot;
-    final scriptsDir = Directory(p.join(toolkitRoot, 'scripts'));
-    final makefileInc = File(p.join(toolkitRoot, 'Makefile.inc'));
-
-    if (!scriptsDir.existsSync()) {
-      print('No vendored toolkit scripts found at ${scriptsDir.path}.');
-      print('Nothing to validate for subtree/script mode.');
-      return 0;
-    }
-
-    var issues = 0;
-
-    if (makefileInc.existsSync()) {
-      print('[pass] ${makefileInc.path}');
-    } else {
-      print('[FAIL] Missing ${makefileInc.path}');
-      issues++;
-    }
-
-    for (final platform in config.platformNames) {
-      for (final scriptName in _requiredScriptsFor(platform)) {
-        final script = File(p.join(scriptsDir.path, scriptName));
-        if (script.existsSync()) {
-          print('[pass] ${script.path}');
-        } else {
-          print('[FAIL] Missing ${script.path}');
-          issues++;
-        }
-      }
-    }
+    final result = await materializeToolkit(
+      toolkitRoot: config.toolkitRoot,
+      outputRoot: outputRoot,
+      force: force,
+    );
 
     print('');
-    if (issues == 0) {
-      print('Vendored toolkit files look complete.');
-    } else {
-      print(
-        '$issues issue(s) found. Add the missing toolkit files or adjust nix.yaml.',
-      );
-    }
-    return issues == 0 ? 0 : 1;
-  }
-
-  Iterable<String> _requiredScriptsFor(String platform) sync* {
-    if (platform == 'macos') {
-      yield 'fetch-flutter.sh';
-      yield 'shell-macos.sh';
-      yield 'build-macos.sh';
-      return;
-    }
-
-    if (platform == 'linux') {
-      yield 'fetch-flutter-linux.sh';
-      yield 'shell-linux.sh';
-      yield 'build-linux.sh';
-      return;
-    }
-
-    if (platform == 'android') {
-      yield 'fetch-android-sdk.sh';
-      yield 'shell-android.sh';
-      yield 'build-android.sh';
-      return;
-    }
-
-    if (platform == 'web') {
-      yield 'fetch-flutter-web.sh';
-      yield 'shell-web.sh';
-      yield 'build-web.sh';
-    }
+    print('Toolkit output: ${outputRoot.path}');
+    print('  copied from toolkit: ${result.copiedFromToolkit}');
+    print('  copied from bundled assets: ${result.copiedFromAssets}');
+    print('  skipped existing files: ${result.skipped}');
+    print('');
+    print('Ejection complete. The output directory now contains:');
+    print('  bootstrap.sh');
+    print('  Makefile.inc');
+    print('  nix/');
+    print('  scripts/');
+    print('  flutter_version.env and android_sdk_version.env');
+    return 0;
   }
 }

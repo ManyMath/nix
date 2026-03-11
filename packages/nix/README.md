@@ -18,6 +18,40 @@ nix_dart shell linux
 nix_dart build web
 ```
 
+## Workflows
+
+### CLI Only
+
+Use `nix_dart` as the source of truth and let it manage `nix.yaml`,
+`flutter_version.env`, and `android_sdk_version.env`:
+
+```sh
+nix_dart init linux web
+nix_dart setup
+nix_dart shell linux
+nix_dart build web
+```
+
+### Vendored Subtree + CLI
+
+If the project already vendors the toolkit, import that layout instead of
+creating a second copy:
+
+```sh
+nix_dart init --from-existing
+nix_dart sync
+```
+
+### CLI To Standalone Toolkit
+
+`eject` materializes the shell-script toolkit so the project can keep running
+without a Dart global package install:
+
+```sh
+nix_dart eject --output-dir tooling/nix
+bash tooling/nix/bootstrap.sh
+```
+
 ## Migration From A Vendored Toolkit
 
 If your project already has `flutter_version.env`, `android_sdk_version.env`,
@@ -46,7 +80,7 @@ The CLI derives the vendored toolkit root from that path, so it can find
 | `doctor` | Check Nix, flakes, `nix.yaml`, `flake.lock`, and vendored toolkit paths |
 | `pin` | Update `flake.lock` to the latest nixpkgs revision |
 | `sync` | Write `flutter_version.env` and `android_sdk_version.env` from `nix.yaml` |
-| `eject` | Validate the vendored toolkit files that subtree/script users rely on |
+| `eject` | Generate a standalone toolkit (`bootstrap.sh`, `Makefile.inc`, `nix/`, `scripts/`) |
 | `clean` | Remove fetched SDKs and build artifacts |
 
 ## `nix.yaml` Schema
@@ -101,3 +135,9 @@ platforms:
   the existing subtree flake and scripts instead of creating a second toolkit.
 - `sync` is the bridge between the config-driven CLI and the repo-shipped shell
   scripts used by `Makefile.inc`.
+- `eject --output-dir path/to/out` writes a self-contained toolkit, using the
+  vendored files when present and falling back to the package-bundled toolkit
+  assets for CLI-only projects.
+- The generated `bootstrap.sh` supports toolkits that live at the project root
+  or inside nested vendor directories by searching upward for the host
+  `pubspec.yaml`.
