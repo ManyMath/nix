@@ -4,7 +4,7 @@
 # Defaults to --pinned for reproducibility.
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 SDK_DIR="$PROJECT_ROOT/.flutter-sdk/flutter"
 
 if [ ! -d "$SDK_DIR" ]; then
@@ -12,7 +12,7 @@ if [ ! -d "$SDK_DIR" ]; then
     exit 1
 fi
 
-FLAKE_DIR="$PROJECT_ROOT/nix"
+FLAKE_DIR="${NIX_FLAKE_DIR:-$PROJECT_ROOT/nix}"
 
 export FLUTTER_NIX_SDK_DIR="$SDK_DIR"
 export FLUTTER_NIX_PROJECT_ROOT="$PROJECT_ROOT"

@@ -10,40 +10,32 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nix',
+      title: 'Nix Reference App',
       theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
-      home: const HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Flutter + Nix')),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle_outline, size: 64, color: Colors.green),
-              SizedBox(height: 16),
-              Text(
-                'Reproducible Flutter build powered by Nix',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 20),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'All system dependencies are declared in nix/flake.nix\n'
-                'and pinned via nix/flake.lock.',
-                textAlign: TextAlign.center,
-              ),
-            ],
+      home: const Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Nix Reference App',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Build this with the Nix wrappers, then check build/web/main.dart.js against expected-hashes/web-main.dart.js.sha256.',
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Start with make setup-web, make build-web, and ./tool/hash_web_release.sh --check.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       ),

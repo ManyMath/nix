@@ -2,9 +2,9 @@
 # Pin nixpkgs to the current flake.lock revision.
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$PROJECT_ROOT/nix"
+FLAKE_DIR="${NIX_FLAKE_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+cd "$FLAKE_DIR"
 
 echo "Updating flake.lock..."
 nix flake update
-echo "Pinned. Commit nix/flake.lock to lock this revision."
+echo "Pinned. Commit flake.lock to lock this revision."

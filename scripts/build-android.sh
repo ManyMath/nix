@@ -4,7 +4,7 @@
 # On Linux, uses the pinned Nix android shell to provide Java (JDK 17).
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 # Detect host OS.
 case "$(uname -s)" in
@@ -39,7 +39,7 @@ else
     exit 1
 fi
 
-FLAKE_DIR="$PROJECT_ROOT/nix"
+FLAKE_DIR="${NIX_FLAKE_DIR:-$PROJECT_ROOT/nix}"
 
 # On Linux, delegate to the Nix android shell which provides JDK 17.
 if [ "$HOST_OS" = "linux" ]; then

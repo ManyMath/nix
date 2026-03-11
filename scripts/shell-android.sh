@@ -6,7 +6,7 @@
 #   ./scripts/shell-android.sh --pinned     # uses Nix android shell (fully reproducible)
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 # Detect host OS.
 case "$(uname -s)" in
@@ -48,7 +48,8 @@ if [ "${1:-}" = "--pinned" ]; then
     echo "Using pinned Nix android shell + Android SDK"
     . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 2>/dev/null || true
     # \$JAVA_HOME is expanded inside the Nix shell (where jdk17 sets it).
-    exec nix develop "$PROJECT_ROOT/nix#android" --command bash --init-file <(cat <<INITEOF
+    FLAKE_DIR="${NIX_FLAKE_DIR:-$PROJECT_ROOT/nix}"
+    exec nix develop "$FLAKE_DIR#android" --command bash --init-file <(cat <<INITEOF
 export PATH="$FLUTTER_DIR/bin:\$JAVA_HOME/bin:$ANDROID_DIR/platform-tools:$ANDROID_DIR/cmdline-tools/latest/bin:\$PATH"
 export FLUTTER_ROOT="$FLUTTER_DIR"
 export ANDROID_HOME="$ANDROID_DIR"

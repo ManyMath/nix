@@ -4,7 +4,7 @@
 # The SDK is stored in .android-sdk/ (git-ignored).
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 source "$PROJECT_ROOT/android_sdk_version.env"
 
 SDK_DIR="$PROJECT_ROOT/.android-sdk"

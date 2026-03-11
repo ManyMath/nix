@@ -1,111 +1,64 @@
-# Unified entry point for Nix-based Flutter development.
-# All targets wrap the scripts/ directory.
+NIX_FLUTTER_DIR ?= .
+include $(NIX_FLUTTER_DIR)/Makefile.inc
 
-.PHONY: setup shell shell-pinned build-macos build-macos-fast \
-        setup-android shell-android shell-android-pinned \
-        build-android \
-        setup-android-linux \
-        setup-linux shell-linux shell-linux-pinned build-linux build-linux-fast \
-        setup-web shell-web shell-web-pinned build-web build-web-fast \
-        pin clean
+.PHONY: bootstrap setup shell shell-pinned build-macos build-macos-fast \
+	setup-android setup-android-linux shell-android shell-android-pinned \
+	build-android setup-linux shell-linux shell-linux-pinned build-linux \
+	build-linux-fast setup-web shell-web shell-web-pinned build-web \
+	build-web-fast hash-web verify-web verify-example-web pin sync clean
 
-# --- macOS/iOS ---
+bootstrap: nix-bootstrap
 
-# Fetch Flutter SDK + pin Nix flake (first-time setup).
-setup:
-	./nix/pin.sh
-	./scripts/fetch-flutter.sh
+setup: nix-setup
 
-# Interactive dev shell (uses latest nixpkgs).
-shell:
-	./scripts/shell-macos.sh
+shell: nix-shell
 
-# Interactive dev shell (fully pinned: reproducible).
-shell-pinned:
-	./scripts/shell-macos.sh --pinned
+shell-pinned: nix-shell-pinned
 
-# CI-friendly macOS build (fully pinned, default).
-build-macos:
-	./scripts/build-macos.sh
+build-macos: nix-build-macos
 
-# macOS build with latest nixpkgs (faster, less reproducible).
-build-macos-fast:
-	./scripts/build-macos.sh --refresh
+build-macos-fast: nix-build-macos-fast
 
-# --- Android ---
+setup-android: nix-setup-android
 
-# Fetch Flutter (macOS) + Android SDK components (requires Java on PATH).
-setup-android: setup
-	./scripts/fetch-android-sdk.sh
+setup-android-linux: nix-setup-android-linux
 
-# Fetch Flutter (Linux) + Android SDK via Nix android shell (provides Java).
-setup-android-linux: setup-linux
-	nix develop ./nix#android --command ./scripts/fetch-android-sdk.sh
+shell-android: nix-shell-android
 
-# Interactive Android dev shell.
-shell-android:
-	./scripts/shell-android.sh
+shell-android-pinned: nix-shell-android-pinned
 
-# Interactive Android dev shell (fully pinned via Nix -- provides Java on any OS).
-shell-android-pinned:
-	./scripts/shell-android.sh --pinned
+build-android: nix-build-android
 
-# CI-friendly Android APK build (Linux: uses Nix android shell; macOS: uses system Java).
-build-android:
-	./scripts/build-android.sh
+setup-linux: nix-setup-linux
 
-# --- Linux desktop ---
+shell-linux: nix-shell-linux
 
-# Fetch Flutter SDK for Linux + pin Nix flake (first-time setup).
-setup-linux:
-	./nix/pin.sh
-	./scripts/fetch-flutter-linux.sh
+shell-linux-pinned: nix-shell-linux-pinned
 
-# Interactive Linux dev shell (uses flake.lock as-is).
-shell-linux:
-	./scripts/shell-linux.sh
+build-linux: nix-build-linux
 
-# Interactive Linux dev shell (fully pinned -- reproducible).
-shell-linux-pinned:
-	./scripts/shell-linux.sh --pinned
+build-linux-fast: nix-build-linux-fast
 
-# CI-friendly Linux build (fully pinned, default).
-build-linux:
-	./scripts/build-linux.sh
+setup-web: nix-setup-web
 
-# Linux build with latest nixpkgs (faster, less reproducible).
-build-linux-fast:
-	./scripts/build-linux.sh --refresh
+shell-web: nix-shell-web
 
-# --- Web ---
+shell-web-pinned: nix-shell-web-pinned
 
-# Fetch Flutter SDK for web (auto-detects macOS or Linux) + pin Nix flake.
-setup-web:
-	./nix/pin.sh
-	./scripts/fetch-flutter-web.sh
+build-web: nix-build-web
 
-# Interactive web dev shell (uses flake.lock as-is).
-shell-web:
-	./scripts/shell-web.sh
+build-web-fast: nix-build-web-fast
 
-# Interactive web dev shell (fully pinned -- reproducible).
-shell-web-pinned:
-	./scripts/shell-web.sh --pinned
+hash-web:
+	./tool/hash_web_release.sh
 
-# CI-friendly web build (fully pinned, default).
-build-web:
-	./scripts/build-web.sh
+verify-web:
+	./tool/hash_web_release.sh --check
 
-# Web build with latest nixpkgs (faster, less reproducible).
-build-web-fast:
-	./scripts/build-web.sh --refresh
+verify-example-web: build-web verify-web
 
-# --- Utility ---
+pin: nix-pin
 
-# Re-pin nixpkgs to current versions.
-pin:
-	./nix/pin.sh
+sync: nix-sync
 
-# Remove fetched SDKs and build artifacts.
-clean:
-	rm -rf .flutter-sdk .android-sdk build ios/Pods macos/Pods
+clean: nix-clean

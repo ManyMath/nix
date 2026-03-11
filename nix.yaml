@@ -1,0 +1,46 @@
+project:
+  name: nix
+
+flutter:
+  version: "3.38.2"
+  channel: stable
+  checksums:
+    macos_x64: ""
+    macos_arm64: ""
+    linux_x64: "9d9c0dcb9180c6dfb176ed5dfdde4fef9a5899f966331c365f18f64262a8b777"
+    linux_arm64: ""
+
+nix:
+  flake: nix
+
+platforms:
+  macos:
+    shell: default
+    build:
+      command: flutter build macos --release
+      output: build/macos/Build/Products/Release/
+
+  linux:
+    shell: linux
+    build:
+      command: flutter build linux --release
+      output: build/linux/x64/release/bundle/
+
+  android:
+    shell: android
+    sdk:
+      cmdline_tools_build: "14742923"
+      cmdline_tools_sha256_macos: ""
+      cmdline_tools_sha256_linux: ""
+      platform_version: android-34
+      build_tools_version: "35.0.0"
+      ndk_version: "28.2.13676358"
+    build:
+      command: flutter build apk --release
+      output: build/app/outputs/flutter-apk/app-release.apk
+
+  web:
+    shell: web
+    build:
+      command: flutter build web --release
+      output: build/web/

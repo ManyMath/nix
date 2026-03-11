@@ -8,7 +8,6 @@
 .metadata
 .flutter-plugins
 .flutter-plugins-dependencies
-/pubspec.lock
 
 # IDE
 .idea/

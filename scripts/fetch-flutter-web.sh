@@ -3,7 +3,7 @@
 # Flutter web uses the same SDK as the host platform (macOS or Linux).
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 case "$(uname -s)" in
     Darwin)

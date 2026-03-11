@@ -7,7 +7,7 @@
 #   ./scripts/shell-macos.sh --refresh    # updates flake inputs to latest, then enters shell
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 SDK_DIR="$PROJECT_ROOT/.flutter-sdk/flutter"
 
 if [ ! -d "$SDK_DIR" ]; then
@@ -17,7 +17,7 @@ fi
 
 export PROJECT_ROOT
 
-FLAKE_DIR="$PROJECT_ROOT/nix"
+FLAKE_DIR="${NIX_FLAKE_DIR:-$PROJECT_ROOT/nix}"
 NIX_ARGS=()
 
 if [ "${1:-}" = "--pinned" ]; then

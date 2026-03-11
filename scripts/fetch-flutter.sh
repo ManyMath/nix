@@ -4,7 +4,7 @@
 # Supports x86_64 and arm64.
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 source "$PROJECT_ROOT/flutter_version.env"
 
 SDK_DIR="$PROJECT_ROOT/.flutter-sdk"
