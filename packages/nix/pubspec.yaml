@@ -1,0 +1,18 @@
+name: nix
+description: Reproducible Dart and Flutter builds with Nix.
+version: 0.0.1
+repository: https://github.com/ManyMath/nix
+
+environment:
+  sdk: ^3.5.0
+
+executables:
+  nix_dart: nix_dart
+
+dependencies:
+  args: ^2.6.0
+  yaml: ^3.1.0
+  path: ^1.9.0
+
+dev_dependencies:
+  test: ^1.25.0
