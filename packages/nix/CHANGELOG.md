@@ -14,3 +14,5 @@
   layout.
 - `bootstrap.sh` now discovers the nearest host `pubspec.yaml`, so nested
   vendored toolkits and standalone roots bootstrap correctly.
+- `init --from-existing` now scans deep enough to detect vendored flakes inside
+  nested subtree layouts such as `vendor/tools/nix/nix`.

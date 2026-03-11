@@ -7,6 +7,62 @@ import 'package:nix/src/nix/nix_runner.dart';
 import 'package:nix/src/templates/config_template.dart';
 import 'package:nix/src/templates/flake_template.dart';
 
+const _flakeCandidateMaxDepth = 4;
+
+String detectExistingFlakePath([Directory? root]) {
+  final searchRoot = (root ?? Directory.current).absolute;
+  final candidates = <String>{'nix', ...findFlakeCandidates(searchRoot)};
+  final existing =
+      candidates
+          .where(
+            (candidate) => File(p.join(searchRoot.path, candidate, 'flake.nix'))
+                .existsSync(),
+          )
+          .toList()
+        ..sort((left, right) {
+          final lengthCompare = left.length.compareTo(right.length);
+          return lengthCompare != 0 ? lengthCompare : left.compareTo(right);
+        });
+
+  if (existing.isEmpty) {
+    return 'nix';
+  }
+
+  return existing.first;
+}
+
+Iterable<String> findFlakeCandidates(Directory root) sync* {
+  Iterable<String> visit(Directory directory, int depth) sync* {
+    if (depth < 0) return;
+
+    final flakeFile = File(p.join(directory.path, 'nix', 'flake.nix'));
+    if (flakeFile.existsSync()) {
+      yield p.relative(p.join(directory.path, 'nix'), from: root.path);
+    }
+
+    if (depth == 0) return;
+
+    for (final entity in directory.listSync(followLinks: false)) {
+      if (entity is! Directory) continue;
+      final name = p.basename(entity.path);
+      if (name.startsWith('.') ||
+          name == 'build' ||
+          name == 'ios' ||
+          name == 'macos' ||
+          name == 'android' ||
+          name == 'web' ||
+          name == 'linux' ||
+          name == '.flutter-sdk' ||
+          name == '.android-sdk') {
+        continue;
+      }
+      yield* visit(entity, depth - 1);
+    }
+  }
+
+  yield* visit(root, _flakeCandidateMaxDepth);
+}
+
 class InitCommand extends Command<int> {
   @override
   final String name = 'init';
@@ -227,7 +283,7 @@ class InitCommand extends Command<int> {
   }
 
   String _detectFlakePath() {
-    final candidates = <String>{'nix', ..._findFlakeCandidates()};
+    final candidates = <String>{'nix', ...findFlakeCandidates(Directory.current)};
     final existing =
         candidates
             .where(
@@ -251,40 +307,6 @@ class InitCommand extends Command<int> {
     }
 
     return existing.first;
-  }
-
-  Iterable<String> _findFlakeCandidates() sync* {
-    final root = Directory.current.absolute;
-
-    Iterable<String> visit(Directory directory, int depth) sync* {
-      if (depth < 0) return;
-
-      final flakeFile = File(p.join(directory.path, 'nix', 'flake.nix'));
-      if (flakeFile.existsSync()) {
-        yield p.relative(p.join(directory.path, 'nix'), from: root.path);
-      }
-
-      if (depth == 0) return;
-
-      for (final entity in directory.listSync(followLinks: false)) {
-        if (entity is! Directory) continue;
-        final name = p.basename(entity.path);
-        if (name.startsWith('.') ||
-            name == 'build' ||
-            name == 'ios' ||
-            name == 'macos' ||
-            name == 'android' ||
-            name == 'web' ||
-            name == 'linux' ||
-            name == '.flutter-sdk' ||
-            name == '.android-sdk') {
-          continue;
-        }
-        yield* visit(entity, depth - 1);
-      }
-    }
-
-    yield* visit(root, 2);
   }
 
   List<String> _detectPlatforms(String flakePath) {
