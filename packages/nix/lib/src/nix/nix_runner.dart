@@ -4,6 +4,12 @@ import 'dart:io';
 /// Wraps invocations of the `nix` system binary.
 class NixRunner {
   final bool verbose;
+  static const String _flakesProbeFlake = '''
+{
+  description = "nix_dart flakes probe";
+  outputs = { self }: { };
+}
+''';
 
   const NixRunner({this.verbose = false});
 
@@ -45,6 +51,39 @@ class NixRunner {
   /// Check whether the `nix-command` and `flakes` experimental features are enabled.
   /// Returns a [FlakesStatus] indicating which (if any) features are enabled.
   Future<FlakesStatus> checkFlakesEnabled() async {
+    final probeStatus = await _probeFlakesEnabled();
+    if (probeStatus != FlakesStatus.unknown) {
+      return probeStatus;
+    }
+
+    return _checkConfiguredFlakesEnabled();
+  }
+
+  Future<FlakesStatus> _probeFlakesEnabled() async {
+    Directory? probeDir;
+    try {
+      probeDir = Directory.systemTemp.createTempSync('nix_flakes_probe_');
+      File('${probeDir.path}/flake.nix').writeAsStringSync(_flakesProbeFlake);
+
+      final result = await Process.run('nix', [
+        'flake',
+        'metadata',
+        'path:${probeDir.absolute.path}',
+      ]);
+      if (result.exitCode == 0) {
+        return FlakesStatus.enabled;
+      }
+      return _classifyFlakesFailure(result.stderr as String);
+    } on ProcessException {
+      return FlakesStatus.unknown;
+    } finally {
+      if (probeDir != null && probeDir.existsSync()) {
+        probeDir.deleteSync(recursive: true);
+      }
+    }
+  }
+
+  Future<FlakesStatus> _checkConfiguredFlakesEnabled() async {
     try {
       final result = await Process.run('nix', [
         'config',
@@ -52,7 +91,8 @@ class NixRunner {
         'experimental-features',
       ]);
       if (result.exitCode != 0) return FlakesStatus.unknown;
-      final features = result.stdout as String;
+      final features = (result.stdout as String).trim();
+      if (features.isEmpty) return FlakesStatus.unknown;
       final hasNixCommand = features.contains('nix-command');
       final hasFlakes = features.contains('flakes');
       if (hasNixCommand && hasFlakes) return FlakesStatus.enabled;
@@ -62,6 +102,22 @@ class NixRunner {
     } on ProcessException {
       return FlakesStatus.unknown;
     }
+  }
+
+  FlakesStatus _classifyFlakesFailure(String stderr) {
+    final message = stderr.toLowerCase();
+    final mentionsExperimental =
+        message.contains('experimental') && message.contains('feature');
+    if (!mentionsExperimental) {
+      return FlakesStatus.unknown;
+    }
+
+    final mentionsNixCommand = message.contains('nix-command');
+    final mentionsFlakes = message.contains('flakes');
+    if (mentionsNixCommand && mentionsFlakes) return FlakesStatus.disabled;
+    if (mentionsFlakes) return FlakesStatus.missingNixCommand;
+    if (mentionsNixCommand) return FlakesStatus.missingFlakes;
+    return FlakesStatus.disabled;
   }
 
   /// Return the age in days of the nixpkgs input in [lockPath], or -1 on error.
@@ -112,16 +168,22 @@ class NixRunner {
 
   /// Update flake.lock by running `nix flake update` inside [flakeDir].
   Future<ProcessResult> pinFlake(String flakeDir) async {
-    _log('(cd $flakeDir && nix flake update)');
-    return Process.run('nix', ['flake', 'update'], workingDirectory: flakeDir);
+    final absoluteFlakeDir = Directory(flakeDir).absolute.path;
+    _log('nix flake update --flake path:$absoluteFlakeDir');
+    return Process.run('nix', [
+      'flake',
+      'update',
+      '--flake',
+      'path:$absoluteFlakeDir',
+    ]);
   }
 
   /// Build the shell ref for nix develop: `$flakePath#$shellName`, or just
   /// `$flakePath` when [shellName] is empty or 'default' (uses the default devShell).
   String _shellRef(String flakePath, String shellName) =>
       (shellName.isEmpty || shellName == 'default')
-      ? flakePath
-      : '$flakePath#$shellName';
+          ? flakePath
+          : '$flakePath#$shellName';
 
   /// Enter an interactive nix development shell.
   ///

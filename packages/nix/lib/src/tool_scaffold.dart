@@ -96,14 +96,18 @@ Future<ToolScaffoldResult> materializeToolkit({
   );
 }
 
-Future<String> _readAsset(String relativePath) async {
+Future<File> resolveToolAssetFile(String relativePath) async {
   final resolved = await Isolate.resolvePackageUri(
     Uri.parse('package:nix/src/assets/tool/$relativePath'),
   );
   if (resolved == null) {
     throw FileSystemException('Could not resolve toolkit asset', relativePath);
   }
-  return File.fromUri(resolved).readAsStringSync();
+  return File.fromUri(resolved);
+}
+
+Future<String> _readAsset(String relativePath) async {
+  return (await resolveToolAssetFile(relativePath)).readAsStringSync();
 }
 
 bool _isExecutable(String relativePath) =>
